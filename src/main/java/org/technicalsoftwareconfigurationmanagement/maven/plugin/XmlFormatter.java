@@ -21,6 +21,7 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.codehaus.plexus.util.DirectoryScanner;
 import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.ReaderFactory;
+import org.codehaus.plexus.util.StringUtils;
 import org.dom4j.Document;
 import org.dom4j.io.OutputFormat;
 import org.dom4j.io.SAXReader;
@@ -315,9 +316,21 @@ public class XmlFormatter extends AbstractMojo {
                 outputFormat.setNewLineAfterDeclaration(false);
                 outputFormat.setPadText(false);
 
-                String lineSeparator = getLineEnding(formatFile);
+                final String lineSeparator = getLineEnding(formatFile);
                 outputFormat.setLineSeparator(lineSeparator);
-                xmlWriter = new XMLWriter(fos, outputFormat);
+                xmlWriter = new XMLWriter(
+                    fos, outputFormat) {
+                    @Override
+                    protected void writeComment(String text) throws IOException {
+                        // must replace the line endings in comments
+                        if (StringUtils.isNotBlank(text) && !LINE_ENDING_KEEP.equals(lineEnding)) {
+                            text = text.replaceAll("\\r\\n|\\r|\\n", lineSeparator);
+                            text = text.replaceAll("\t", outputFormat.getIndent());
+                        }
+
+                        super.writeComment(text);
+                    }
+                };
                 xmlWriter.write(xmlDoc);
                 xmlWriter.flush();
 
